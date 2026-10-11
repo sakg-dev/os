@@ -94,13 +94,33 @@ smOtherProcedure:
         ret ; <- its kinda like pop [register] -> jmp [register]
 
 takeInput:
-        mov ah, 0 ; wait for key ipt
-        int 0x16 ; key int
-        mov ah, 0x0e
-        cmp al, 13
-        je exitInput
-        int 0x10
-        jmp takeInput
+        mov cx, 0
+        jmp take
+
+        take:
+                mov ah, 0 ; wait for key ipt
+                int 0x16 ; key int
+                mov ah, 0x0e
+                cmp al, 13
+                je printInput
+                int 0x10
+                mov ah, 0 ; clearing ah which is stamp code ig??
+                push ax
+                inc cx
+                jmp take
+        ; printing in reverse rn
+        printInput:
+                call printNewLine
+                jmp printIptLoop
+                printIptLoop:
+                        cmp cx, 0
+                        je exitInput
+                        pop ax
+                        mov ah, 0x0e
+                        int 0x10
+                        dec cx
+                        jmp printIptLoop
+
         exitInput:
         call printNewLine
         ret
@@ -143,7 +163,7 @@ printNumber:
                 mov dx, ax
                 mov dl, dh ; put value of dh(remainder) in dl for accessibility while printing as we are pushing the whole register not just high or low
                 mov dh, 0 ; empty dh as we have its val in dl
-        e     push dx
+                push dx
                 mov ah, 0 ; now ax contains the digits without last one like 562 from 5628
                 jmp loop
         singleDigit:
