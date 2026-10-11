@@ -66,7 +66,7 @@ call printNewLine
 ; Functions: instead of writing the upper mess, write reusable code
 call smOtherProcedure
 int 0x10 ; address of ts instruction is pushed into the stack | 'X'
-
+call printNewLine
 mov ax, 215
 call printNumber
 
@@ -96,28 +96,43 @@ smOtherProcedure:
 takeInput:
         mov cx, 0
         jmp take
+        userString: times 64 db 0
 
         take:
                 mov ah, 0 ; wait for key ipt
                 int 0x16 ; key int
                 mov ah, 0x0e
-                cmp al, 13
-                je printInput
+                cmp al, 13 ; enter pressed
+                je put
                 int 0x10
                 mov ah, 0 ; clearing ah which is stamp code ig??
                 push ax
                 inc cx
                 jmp take
-        ; printing in reverse rn
+        ; here we took the things from stack and put in the buffer
+        put:
+                mov bx, userString ; starting addr
+                add bx, cx ; bx: userStringStartIndex + cx as wanna go from last to first for reverse | below we decrement it bcz of idx..
+                dec bx ; rmv one for idx
+                jmp putLoop
+                putLoop:
+                        cmp bx, ( userString - 1 ) ; check if we reached the beginning of userString
+                        je printInput
+                        pop ax
+                        mov [bx], al
+                        dec bx
+                        jmp putLoop
         printInput:
                 call printNewLine
+                mov bx, userString
                 jmp printIptLoop
                 printIptLoop:
                         cmp cx, 0
                         je exitInput
-                        pop ax
+                        mov ax, [bx]
                         mov ah, 0x0e
                         int 0x10
+                        inc bx
                         dec cx
                         jmp printIptLoop
 
@@ -127,6 +142,7 @@ takeInput:
 
 printNewLine:
         push ax
+        mov ah, 0x0e
         mov al, 13
         int 0x10
         mov al, 10
@@ -182,8 +198,8 @@ printNumber:
                 dec cx ; decreament
                 jmp printStackNumber
         exit:
-            call printNewLine ; BUG: something is wrong inside the upper loop(smthing with registers) bcz when we call printNewLine after popa, it behaves weird
-            popa
+        popa
+        call printNewLine
         ret
         ;mov ax, 'H'
         ;mov dx, ax
