@@ -27,12 +27,7 @@ mov al, bh ; B
 int 0x10
 ;push bl ; can't do 8 bit register
 
-push ax
-mov al, 13
-int 0x10
-mov al, 10
-int 0x10
-pop ax
+call printNewLine
 
 ; pusha - push ax, cx, dx, bx, sp, bp, si, di | popa - pop di, si, bp, sp, bx, dx, cx, ax (no need to manually do for all, js do one!)
 mov cx, 1
@@ -66,12 +61,7 @@ printSuccess:
 end:
 popa
 
-push ax
-mov al, 13
-int 0x10
-mov al, 10
-int 0x10
-pop ax
+call printNewLine
 
 ; Functions: instead of writing the upper mess, write reusable code
 call smOtherProcedure
@@ -80,18 +70,64 @@ int 0x10 ; address of ts instruction is pushed into the stack | 'X'
 mov ax, 215
 call printNumber
 
-smOtherProcedure:
-        mov al, 'X'
-        mov dx, 0
-        mov di, 0
-        ret ; <- its kinda like pop [register] -> jmp [register]
-
 ; Segmentation
 ; in real mode we can access upto 2^16 bits which is 64 kilobytes thats not a lot
 ; Hence we have segmentation that devides memory intro segments, each upto 64kb.
 ; we have data, code, stack and other segments
 ; we have segment registers like ds, cs, ss etc that stores the address of the segment
 
+; call printNewLine
+
+; reading enter terminated input from user and print trough stack
+mov ah, 0x0e
+mov al, 'W'
+int 0x10
+call printNewLine
+call askEnter
+call takeInput
+
+
+smOtherProcedure:
+        mov al, 'X'
+        mov dx, 0
+        mov di, 0
+        ret ; <- its kinda like pop [register] -> jmp [register]
+
+takeInput:
+        mov ah, 0 ; wait for key ipt
+        int 0x16 ; key int
+        mov ah, 0x0e
+        cmp al, 13
+        je exitInput
+        int 0x10
+        jmp takeInput
+        exitInput:
+        call printNewLine
+        ret
+
+printNewLine:
+        push ax
+        mov al, 13
+        int 0x10
+        mov al, 10
+        int 0x10
+        pop ax
+        ret
+
+askEnter:
+        mov bx, enterString
+        jmp printAskLoop
+        printAskLoop:
+                mov al, [bx+0x7c00]
+                int 0x10
+                inc bx
+                cmp [bx+0x7c00], 0
+                je endAsk
+                jmp printAskLoop
+        enterString:
+                db "Enter: ", 0
+        endAsk:
+            ret
 
 printNumber:
         pusha
@@ -107,7 +143,7 @@ printNumber:
                 mov dx, ax
                 mov dl, dh ; put value of dh(remainder) in dl for accessibility while printing as we are pushing the whole register not just high or low
                 mov dh, 0 ; empty dh as we have its val in dl
-                push dx
+        e     push dx
                 mov ah, 0 ; now ax contains the digits without last one like 562 from 5628
                 jmp loop
         singleDigit:
@@ -126,6 +162,9 @@ printNumber:
                 dec cx ; decreament
                 jmp printStackNumber
         exit:
+            call printNewLine ; BUG: something is wrong inside the upper loop(smthing with registers) bcz when we call printNewLine after popa, it behaves weird
+            popa
+        ret
         ;mov ax, 'H'
         ;mov dx, ax
         ;mov dl, 'X'
@@ -135,8 +174,6 @@ printNumber:
         ; mov ah, 0x0e
         ; mov al, 'W'
         ; int 0x10
-        popa
-        ret
 
 
 times 510 - ($-$$) db 0
