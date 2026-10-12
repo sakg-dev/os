@@ -12,7 +12,7 @@ _start:
         call newLine
 
         call accessCodeBeyondCurrentBootsector
-        jmp $ ; to prevent cpu to look at following things..
+        jmp exit ; to prevent cpu to look at following things..
 
 accessCodeBeyondCurrentBootsector: ; Access code and execute which is beyond current bootsector through loading more sectors into memory
         ; CHS Address: In BIOS, data is read from the hard drive(mainly) using CHS (Cylinder, Head, Sector) addressing. A hard drive is like multiple cassettes (platters) stacked vertically, with a read/write head(like needle) for each surface. If we view a platter from the top, we can see many concentric circles called tracks. If we consider the tracks at the same radius across all the platter surfaces, they form a cylinder. Each track is divided into sectors, and each sector stores 512 bytes of data. We identify sector through: Cylindrical number, head number and sector number -- CHS
@@ -29,13 +29,39 @@ accessCodeBeyondCurrentBootsector: ; Access code and execute which is beyond cur
 
         int 0x13 ; int for disk access
 
+        jc handleErr ; jc checks if CF is 1 | btw cf is a flag register
+
+        cmp al, 1 ; checking if it read the sector no. correctly or not
+        jne handleErr
+
 
         mov ah, 0x0e
         mov al, [0x7e00]
         int 0x10 ; 'W' as we filled this sector with W
+        call newLine
+        ret
+
+
+        handleErr:
+                mov bx, errStr
+                mov ah, 0x0e
+                jmp printErr
+
+                printErr: 
+                        cmp [bx], 0
+                        je exitPrintErr
+
+                        mov al, [bx]
+                        int 0x10
+                        inc bx
+                        jmp printErr
+                errStr: 
+                        db "Something went wrong while reading data from disk!!", 0
+        
+
+        exitPrintErr:
 
         call newLine
-
         ret
 
 
@@ -53,6 +79,9 @@ newLine:
         pop ax
 
         ret
+
+
+exit:
 
 times 510 - ($ - $$) db 0
 db 0x55, 0xAA
