@@ -14,7 +14,7 @@ mov [BOOT_DISK], dl
 ;   - Type Flags
 ;       - Code: Does this seg. contains code
 ;       - Conforming: Can this code be executed from lower privilege seg. (For data segment, its Direction flag, if high, segment becomes exand down segment that grows downwards)
-;       - Readable: Can this be read or is it only executable, we can read contants if set to high (It becomes writable in Data segment)
+;       - Readable: Can this be read or is it only executable, we can read constants if set to high (It becomes writable in Data segment)
 ;       - Accessed: Used by CPU when segment is used by it, we should set it low
 ;   - Other Flags
 ;       - Granularity: The limit is multiplied by 0x1000 so it spans whole 4 GB of memory
@@ -71,10 +71,47 @@ GDT_Descriptor:
 
 [bits 32] ; defining that this label is for 32 bits and all things inside will use 32 bits!
 start_protected_mode:
-        mov al, 'W'
-        mov ah, 0x0f
-        mov [0xb8000], ax
+        ; call fillScreen
+        call fillScreenWithColor
         jmp $
+
+fillScreen:
+        mov cx, 80
+        mul cx, 25 ; y position
+        mov ebx, 0xb8000
+        mov al, 'A'
+        mov ah, 0x0f
+
+        printLoop:
+                mov [ebx], ax
+                add bx, 2
+                dec cx
+                cmp cx, 0
+                jne printLoop
+        ret
+
+fillScreenWithColor:
+        mov cx, 80
+        mul cx, 25
+        mov ebx, 0xb8000
+        mov al, ' '
+        mov ah, 0x00
+
+        resetFG: ; no need to prevent it in first as its the init step
+                mov ah, 0x00
+                jmp printLoopClr
+
+        printLoopClr:
+                cmp ah, 0xf0
+                jle resetFG
+                add ah, 0x10
+                mov [ebx], ax
+                add bx, 2
+                dec cx
+                cmp cx, 0
+                jne printLoopClr
+
+        ret
 
 BOOT_DISK: db 0
 
