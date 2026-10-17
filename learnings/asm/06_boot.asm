@@ -72,6 +72,7 @@ GDT_Descriptor:
 [bits 32] ; defining that this label is for 32 bits and all things inside will use 32 bits!
 start_protected_mode:
         ; call fillScreen
+        ; call test
         call fillScreenWithColor
         jmp $
 
@@ -80,14 +81,25 @@ fillScreen:
         mul cx, 25 ; y position
         mov ebx, 0xb8000
         mov al, 'A'
-        mov ah, 0x0f
+        mov ah, 0x09
 
         printLoop:
                 mov [ebx], ax
-                add bx, 2
+                add ebx, 2
                 dec cx
                 cmp cx, 0
                 jne printLoop
+        ret
+
+test:
+        mov ah, 0x90
+        add ah, 0x10
+        cmp ah, 0xa0
+        jne exit
+        mov al, 'Y'
+        mov [0xb8000], ax
+
+        exit:
         ret
 
 fillScreenWithColor:
@@ -95,22 +107,25 @@ fillScreenWithColor:
         mul cx, 25
         mov ebx, 0xb8000
         mov al, ' '
-        mov ah, 0x00
-
-        resetFG: ; no need to prevent it in first as its the init step
-                mov ah, 0x00
-                jmp printLoopClr
+        mov ah, 0x0f
 
         printLoopClr:
-                cmp ah, 0xf0
-                jle resetFG
-                add ah, 0x10
+                ; cmp ah, 0xf0 ; its causing an overflow, resulting in an even pattern lol: since the FG is f, it will never match it so once ah becomes 0xff, we add one more, ah will be 0x10f but since it can store only 8 bits, it will cause an overflow, cpu will discard the 1 and mov to cf flag so ah will be 0x0f and loop repeats lmfao
+                cmp ah, 0xff
+                je resetFG
                 mov [ebx], ax
-                add bx, 2
+                add ah, 0x10
+                add ebx, 2
                 dec cx
                 cmp cx, 0
                 jne printLoopClr
+                jmp exitFillScreenClr
 
+        resetFG:
+                mov ah, 0x0f
+                jmp printLoopClr
+
+        exitFillScreenClr:
         ret
 
 BOOT_DISK: db 0
